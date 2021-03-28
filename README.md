@@ -1,3 +1,3 @@
 # Network and Cybersecurity
 
-A collection of scripts for NETWORK PROTOCOL SECURITY
+A collection of scripts for Network Protocols
