@@ -41,22 +41,21 @@ def build_packet():
 	data = struct.pack("d", time.time())
 	# Calculate the checksum on the data and the dummy header.
 	myChecksum = checksum(header + data)
-	
+
 	# Get the right checksum, and put in the header
 	if sys.platform == 'darwin':
 		# Convert 16-bit integers from host to network  byte order
 		myChecksum = htons(myChecksum) & 0xffff		
 	else:
 		myChecksum = htons(myChecksum)
-		
+
 	header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, myChecksum, (os.getpid() & 0xFFFF), 1)
-	packet = header + data
-	return packet
+	return header + data
 
 def get_route(hostname):
 	timeLeft = TIMEOUT
 	for ttl in xrange(1,MAX_HOPS):
-		for tries in xrange(TRIES):
+		for _ in xrange(TRIES):
 			destAddr = gethostbyname(hostname)
 			# SOCK_RAW is a powerful socket type. For more details:   http://sock-raw.org/papers/sock_raw
 			mySocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)
@@ -79,34 +78,25 @@ def get_route(hostname):
 				timeLeft = timeLeft - howLongInSelect
 				if timeLeft <= 0:
 					print "  *        *        *    Request timed out."
-				
+
 			except timeout:
 				continue			
-			
+
 			else:
 				# Fetch the ICMP type and code from the received packet
 				type, code = recvPacket[20:22]
 				type, code = ord(type), ord(code)
-				
-				if type == 11:
-					bytes = struct.calcsize("d") 
+
+				bytes = struct.calcsize("d")
+				if type == 0:
+					bytes = struct.calcsize("d")
 					timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
-					print "  %d    rtt=%.0f ms    %s" %(ttl, (timeReceived -t)*1000, addr[0])
-				
-				elif type == 3:
-					bytes = struct.calcsize("d") 
-					timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
-					print "  %d    rtt=%.0f ms    %s" %(ttl, (timeReceived-t)*1000, addr[0]) 
-				
-				elif type == 0:
-					bytes = struct.calcsize("d") 
-					timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
-					print "  %d    rtt=%.0f ms    %s" %(ttl, (timeReceived - timeSent)*1000, addr[0])
 					return
-			
-				else:
-					print "error"				
-				break	
+
+				elif type in {11, 3}:
+					bytes = struct.calcsize("d")
+					timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
+				break
 			finally:				
 				mySocket.close()		
 get_route("google.com")	
